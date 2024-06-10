@@ -1,42 +1,49 @@
-from flask import Blueprint, request, jsonify
-from .logic import UserManager
+from datetime import datetime
+from .models import User
 
-users_blueprint = Blueprint('users', __name__)
-user_manager = UserManager()
+class UserManager:
+    def __init__(self):
+        self.users = []
+        self.next_id = 1
 
-@users_blueprint.route('/users', methods=['GET'])
-def get_users():
-    users = user_manager.get_all_users()
-    users_dict = [user.to_dict() for user in users]
-    return jsonify(users_dict), 200
+    def add_user(self, firstName, lastName, birthYear, group):
+        if group not in ["user", "premium", "admin"]:
+            raise ValueError("Invalid group")
+        user = User(self.next_id, firstName, lastName, birthYear, group)
+        self.users.append(user)
+        self.next_id += 1
+        return user
 
-@users_blueprint.route('/users/<int:id>', methods=['GET'])
-def get_user(id):
-    user = user_manager.get_user(id)
-    if user:
-        return jsonify(user.to_dict()), 200
-    else:
-        return "User not found", 404
+    def get_user(self, user_id):
+        for user in self.users:
+            if user.id == user_id:
+                return user
+        return None
 
-@users_blueprint.route('/users', methods=['POST'])
-def create_user():
-    data = request.json
-    user = user_manager.add_user(**data)
-    return jsonify(user.to_dict()), 201
+    def get_all_users(self):
+        return self.users
 
-@users_blueprint.route('/users/<int:id>', methods=['PATCH'])
-def update_user(id):
-    data = request.json
-    user = user_manager.update_user(id, **data)
-    if user:
-        return jsonify(user.to_dict()), 200
-    else:
-        return "User not found", 404
+    def update_user(self, user_id, firstName=None, lastName=None, birthYear=None, group=None):
+        user = self.get_user(user_id)
+        if not user:
+            return None
+        
+        if firstName:
+            user.firstName = firstName
+        if lastName:
+            user.lastName = lastName
+        if birthYear:
+            user.birthYear = birthYear
+        if group:
+            if group not in ["user", "premium", "admin"]:
+                raise ValueError("Invalid group")
+            user.group = group
+        
+        return user
 
-@users_blueprint.route('/users/<int:id>', methods=['DELETE'])
-def delete_user(id):
-    user = user_manager.delete_user(id)
-    if user:
-        return "User deleted", 200
-    else:
-        return "User not found", 404
+    def delete_user(self, user_id):
+        user = self.get_user(user_id)
+        if not user:
+            return None
+        self.users.remove(user)
+        return user
